@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>뉴헤어 기간 조회</title>
+<style>
+:root{
+  --bg:#f3f3f0; --surface:#fcfcfb; --line:#e3e2dd; --grid:#ecebe6;
+  --t1:#0b0b0b; --t2:#52514e; --t3:#807f7a;
+  --s1:#2a78d6; --up:#d03a39; --down:#2a78d6; --warn-bg:#fff6dd; --warn-t:#6b4a00;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#111110; --surface:#1a1a19; --line:#2e2e2b; --grid:#262624;
+    --t1:#f0efec; --t2:#c3c2b7; --t3:#9a998f;
+    --s1:#3987e5; --up:#e66767; --down:#5a9bf0; --warn-bg:#2b2410; --warn-t:#f0d58a;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t1);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",Pretendard,sans-serif;line-height:1.5;-webkit-text-size-adjust:100%}
+.wrap{max-width:980px;margin:0 auto;padding:16px 14px 48px}
+header.top{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin-bottom:12px}
+h1{font-size:20px;margin:0}
+.sub{color:var(--t2);font-size:13px;margin:2px 0 0}
+a.back{display:inline-block;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--t1);text-decoration:none;font-size:14px}
+a.back:hover{border-color:var(--s1)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.filters label{font-size:13px;color:var(--t2)}
+select{font:inherit;font-size:15px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--t1)}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+button.pre{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--t1);cursor:pointer}
+button.pre:hover{border-color:var(--s1)}
+button.pre[aria-pressed="true"]{background:var(--s1);border-color:var(--s1);color:#fff}
+.notice{background:var(--warn-bg);color:var(--warn-t);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:12px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.card h3{margin:0 0 4px;font-size:13px;font-weight:600;color:var(--t2)}
+.card .v{font-size:24px;font-weight:700;letter-spacing:-.02em;word-break:keep-all}
+.card .v small{font-size:13px;font-weight:500;color:var(--t2);margin-left:2px}
+.card .d{font-size:12.5px;color:var(--t2);margin-top:2px;min-height:18px}
+.up{color:var(--up);font-weight:600}.dn{color:var(--down);font-weight:600}.fl{color:var(--t2);font-weight:600}
+section.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+section.box h2{font-size:15px;margin:0 0 8px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chartwrap{position:relative}
+svg text{fill:var(--t2);font-size:11px}
+svg .grid{stroke:var(--grid);stroke-width:1}
+svg .base{stroke:var(--t3);stroke-width:1}
+svg .lbl{fill:var(--t1);font-weight:600}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12.5px;box-shadow:0 2px 8px rgba(0,0,0,.15);display:none;white-space:nowrap;z-index:5}
+.tip b{font-size:15px;display:block}
+.legend{font-size:12px;color:var(--t2);margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 14px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:7px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--t2);font-size:12.5px}
+tr.sum td{font-weight:700;border-top:2px solid var(--line)}
+tr.ref td{color:var(--t2)}
+tr.dim td{opacity:.45}
+h3.sh{font-size:13.5px;margin:14px 0 6px;color:var(--t2)}
+.fn{font-size:12.5px;color:var(--t2);margin:6px 0 0;padding-left:18px}
+.fn li{margin:2px 0}
+details summary{cursor:pointer;font-weight:600;font-size:15px}
+#osCards{grid-template-columns:repeat(4,1fr)}
+@media (max-width:900px){#osCards{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){
+  .cards{grid-template-columns:repeat(2,1fr)}
+  .card .v{font-size:21px}
+  .presets{margin-left:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>뉴헤어 기간 조회</h1>
+      <p class="sub" id="sub"></p>
+    </div>
+    <a class="back" id="back" href="#" target="_blank" rel="noopener">← 보고서로 돌아가기</a>
+  </header>
+
+  <div class="filters" role="group" aria-label="기간 선택">
+    <label for="m0">시작</label><select id="m0"></select>
+    <label for="m1">종료</label><select id="m1"></select>
+    <div class="presets" id="presets"></div>
+  </div>
+  <div class="notice" id="notice" hidden></div>
+
+  <div class="cards" id="cards"></div>
+
+  <section class="box">
+    <h2 id="chtTitle">월별 추이</h2>
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <div class="chartwrap" id="cw"><svg id="cht" role="img" aria-label="월별 추이 그래프"></svg><div class="tip" id="tip"></div></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section class="box">
+    <h2>채널별 현황 <span style="font-weight:400;color:var(--t2);font-size:13px" id="chRange"></span></h2>
+    <div class="tw"><table id="chTable"></table></div>
+    <ul class="fn" id="chFn"></ul>
+  </section>
+
+  <section class="box" id="osBox">
+    <h2>해외 고객 <span style="font-weight:400;color:var(--t2);font-size:13px" id="osRange"></span></h2>
+    <div class="cards" id="osCards"></div>
+    <h3 class="sh">채널별 해외 문의·예약</h3>
+    <div class="tw"><table id="osTable"></table></div>
+    <h3 class="sh">해외 내원 (과목별)</h3>
+    <div class="tw"><table id="osVisit"></table></div>
+    <ul class="fn" id="osFn"></ul>
+  </section>
+
+  <section class="box">
+    <details open>
+      <summary>월별 표</summary>
+      <div class="tw" style="margin-top:8px"><table id="moTable"></table></div>
+    </details>
+  </section>
+
+  <section class="box">
+    <h2>보는 법</h2>
+    <ul class="fn" id="notes"></ul>
+  </section>
+</div>
+
+<script>
+/* 보고서 주소: 아래 한 줄만 바꾸면 됩니다 */
+var REPORT_URL = "https://br8642-rgb.github.io/newhair-report/report.html";
+var DATA = {"generated": "2026-11-09", "asof": {"phone": "2026-11-07", "naver": "2026-11-09", "board": "2026-11-09", "plchin": "2026-11-09", "whatsapp": "2026-11-09", "email": "2026-11-05", "wechat": "2026-11-05", "line": "2026-11-09", "visit": "2026-11-07", "sales": "2026-10-31"}, "months": [{"ym": "2026-01", "label": "1월", "partial": false, "ph": [520, 473], "nv": [187, 5, 180], "bd": [74, 10, 66], "pl": [75, 37], "em": [0, 0], "wa": [33, 8], "wc": [0, 0], "ln": [3, 0], "vi": [504, 254, 154], "sa": 990560454, "os": {"pl": [19, 6], "em": [0, 0], "wa": [33, 8], "wc": [0, 0], "ln": [3, 0], "nv": [0, 0], "bd": [0, 0]}, "ov": [4, 4, 0, 0, 0, 0, 0]}, {"ym": "2026-02", "label": "2월", "partial": false, "ph": [408, 376], "nv": [168, 7, 161], "bd": [70, 9, 61], "pl": [66, 28], "em": [0, 0], "wa": [29, 7], "wc": [0, 0], "ln": [2, 1], "vi": [388, 198, 116], "sa": 834088260, "os": {"pl": [24, 12], "em": [0, 0], "wa": [29, 7], "wc": [0, 0], "ln": [2, 1], "nv": [0, 0], "bd": [0, 0]}, "ov": [2, 1, 0, 0, 0, 1, 0]}, {"ym": "2026-03", "label": "3월", "partial": false, "ph": [475, 432], "nv": [151, 5, 149], "bd": [94, 9, 84], "pl": [88, 42], "em": [0, 0], "wa": [31, 12], "wc": [3, 1], "ln": [3, 0], "vi": [454, 238, 135], "sa": 829145790, "os": {"pl": [23, 9], "em": [0, 0], "wa": [31, 12], "wc": [3, 1], "ln": [3, 0], "nv": [0, 0], "bd": [0, 0]}, "ov": [6, 5, 0, 0, 1, 0, 0]}, {"ym": "2026-04", "label": "4월", "partial": false, "ph": [444, 403], "nv": [154, 6, 150], "bd": [88, 11, 74], "pl": [89, 43], "em": [0, 0], "wa": [35, 12], "wc": [5, 2], "ln": [5, 2], "vi": [422, 190, 110], "sa": 846347265, "os": {"pl": [31, 15], "em": [0, 0], "wa": [35, 12], "wc": [5, 2], "ln": [5, 2], "nv": [0, 0], "bd": [0, 0]}, "ov": [9, 0, 2, 0, 3, 2, 1]}, {"ym": "2026-05", "label": "5월", "partial": false, "ph": [431, 397], "nv": [148, 6, 146], "bd": [88, 18, 77], "pl": [83, 41], "em": [0, 0], "wa": [37, 17], "wc": [2, 1], "ln": [2, 0], "vi": [444, 229, 143], "sa": 959400480, "os": {"pl": [24, 14], "em": [0, 0], "wa": [37, 17], "wc": [2, 1], "ln": [2, 0], "nv": [0, 0], "bd": [0, 0]}, "ov": [10, 4, 0, 0, 3, 3, 0]}, {"ym": "2026-06", "label": "6월", "partial": false, "ph": [345, 319], "nv": [127, 4, 124], "bd": [65, 11, 57], "pl": [75, 44], "em": [0, 0], "wa": [36, 11], "wc": [8, 2], "ln": [3, 1], "vi": [368, 181, 109], "sa": 694896515, "os": {"pl": [13, 4], "em": [0, 0], "wa": [36, 11], "wc": [8, 2], "ln": [3, 1], "nv": [1, 1], "bd": [0, 0]}, "ov": [13, 8, 0, 0, 1, 3, 1]}, {"ym": "2026-07", "label": "7월", "partial": false, "ph": [479, 429], "nv": [155, 9, 149], "bd": [90, 15, 79], "pl": [92, 53], "em": [2, 0], "wa": [59, 15], "wc": [10, 3], "ln": [5, 1], "vi": [474, 232, 132], "sa": 827344205, "os": {"pl": [15, 7], "em": [2, 0], "wa": [59, 15], "wc": [10, 3], "ln": [5, 1], "nv": [0, 0], "bd": [0, 0]}, "ov": [33, 13, 2, 1, 6, 10, 0]}, {"ym": "2026-08", "label": "8월", "partial": false, "ph": [497, 452], "nv": [189, 1, 187], "bd": [106, 6, 90], "pl": [104, 57], "em": [2, 0], "wa": [75, 27], "wc": [10, 4], "ln": [8, 0], "vi": [503, 236, 152], "sa": 790477106, "os": {"pl": [30, 15], "em": [2, 0], "wa": [75, 27], "wc": [10, 4], "ln": [8, 0], "nv": [0, 0], "bd": [1, 0]}, "ov": [52, 18, 3, 2, 4, 19, 2]}, {"ym": "2026-09", "label": "9월", "partial": false, "ph": [498, 439], "nv": [192, 9, 182], "bd": [93, 8, 80], "pl": [92, 53], "em": [6, 1], "wa": [65, 25], "wc": [4, 2], "ln": [15, 3], "vi": [451, 219, 119], "sa": 868863540, "os": {"pl": [31, 14], "em": [6, 1], "wa": [65, 25], "wc": [4, 2], "ln": [15, 3], "nv": [0, 0], "bd": [0, 0]}, "ov": [40, 18, 2, 3, 8, 6, 1]}, {"ym": "2026-10", "label": "10월", "partial": false, "ph": [508, 468], "nv": [179, 8, 178], "bd": [87, 16, 81], "pl": [97, 55], "em": [7, 0], "wa": [72, 26], "wc": [11, 4], "ln": [22, 6], "vi": [535, 263, 138], "sa": 841355210, "os": {"pl": [31, 13], "em": [5, 0], "wa": [72, 26], "wc": [11, 4], "ln": [22, 6], "nv": [0, 0], "bd": [3, 2]}, "ov": [37, 17, 6, 1, 2, 9, 1]}, {"ym": "2026-11", "label": "11월", "partial": true, "ph": [106, 99], "nv": [53, 0, 50], "bd": [19, 3, 19], "pl": [29, 20], "em": [4, 0], "wa": [26, 14], "wc": [0, 0], "ln": [5, 2], "vi": [106, 43, 17], "sa": null, "os": {"pl": [13, 8], "em": [4, 0], "wa": [26, 14], "wc": [0, 0], "ln": [5, 2], "nv": [0, 0], "bd": [0, 0]}, "ov": [9, 7, 0, 0, 0, 1, 1]}]};
+
+(function(){
+"use strict";
+var M = DATA.months, N = M.length;
+var CHAN = [ // 합산에 들어가는 채널
+  {k:"ph",name:"전화"},{k:"pl",name:"플친"},{k:"em",name:"이메일"},
+  {k:"wa",name:"왓츠앱"},{k:"wc",name:"위챗"},{k:"ln",name:"라인"}];
+var OSCH = [{k:"pl",name:"플친"},{k:"em",name:"이메일"},{k:"wa",name:"왓츠앱"},{k:"wc",name:"위챗"},{k:"ln",name:"라인"},{k:"nv",name:"네이버"},{k:"bd",name:"게시판"}];
+var OSSUB = ["모발이식","헤어라인","SMP","탈모치료","검사","처방"];
+var SIDE = [{k:"nv",name:"네이버"},{k:"bd",name:"게시판"}]; // 참고(전화에 포함되어 합산 제외)
+
+function $(id){return document.getElementById(id);}
+function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
+function fmt(n){return Math.round(n).toLocaleString("ko-KR");}
+function pct(a,b){return b>0?a/b:null;}
+function pctTxt(r){return r==null?"—":Math.round(r*100)+"%";}
+function won(n){
+  var eok=Math.floor(n/1e8), man=Math.round((n-eok*1e8)/1e4);
+  if(man>=10000){eok+=1;man-=10000;}
+  if(eok>0) return eok+"억 "+man.toLocaleString("ko-KR")+"만원";
+  return man.toLocaleString("ko-KR")+"만원";
+}
+function wonShort(n){var a=Math.abs(n);var eok=Math.floor(a/1e8),man=Math.round((a-eok*1e8)/1e4);if(man>=10000){eok++;man-=10000;}
+  return eok>0?eok+"억 "+man.toLocaleString("ko-KR")+"만":man.toLocaleString("ko-KR")+"만";}
+
+/* 합계 계산 */
+function sum(i0,i1){
+  var t={q:0,r:0,ch:{},side:{},os:{},osq:0,osr:0,ov:[0,0,0,0,0,0,0],visit:0,cv:0,cc:0,sales:0,salesMonths:0,months:i1-i0+1,partial:false};
+  CHAN.forEach(function(c){t.ch[c.k]={q:0,r:0};});
+  SIDE.forEach(function(c){t.side[c.k]={q:0,a:0,r:0};});
+  OSCH.forEach(function(c){t.os[c.k]={q:0,r:0};});
+  for(var i=i0;i<=i1;i++){
+    var m=M[i]; if(m.partial)t.partial=true;
+    CHAN.forEach(function(c){t.ch[c.k].q+=m[c.k][0];t.ch[c.k].r+=m[c.k][1];t.q+=m[c.k][0];t.r+=m[c.k][1];});
+    SIDE.forEach(function(c){t.side[c.k].q+=m[c.k][0];t.side[c.k].a+=m[c.k][1];t.side[c.k].r+=m[c.k][2];});
+    OSCH.forEach(function(c){t.os[c.k].q+=m.os[c.k][0];t.os[c.k].r+=m.os[c.k][1];t.osq+=m.os[c.k][0];t.osr+=m.os[c.k][1];});
+    for(var j=0;j<7;j++)t.ov[j]+=m.ov[j];
+    t.visit+=m.vi[0];t.cv+=m.vi[1];t.cc+=m.vi[2];
+    if(m.sa!=null){t.sales+=m.sa;t.salesMonths++;}
+  }
+  return t;
+}
+function monthVal(m,metric){
+  var q=0,r=0;CHAN.forEach(function(c){q+=m[c.k][0];r+=m[c.k][1];});
+  switch(metric){
+    case "q":return q; case "r":return r; case "rate":return pct(r,q);
+    case "visit":return m.vi[0]; case "cc":return m.vi[2]; case "crate":return pct(m.vi[2],m.vi[1]);
+    case "sales":return m.sa;
+    case "osq":{var a=0;OSCH.forEach(function(c){a+=m.os[c.k][0];});return a;}
+    case "osr":{var b=0;OSCH.forEach(function(c){b+=m.os[c.k][1];});return b;}
+    case "osrate":{var x=0,y=0;OSCH.forEach(function(c){x+=m.os[c.k][0];y+=m.os[c.k][1];});return pct(y,x);}
+    case "ov":return m.ov[0];
+  }
+}
+var METRICS=[
+  {id:"q",name:"신규 문의",unit:"건",kind:"n"},{id:"r",name:"신규 예약",unit:"건",kind:"n"},
+  {id:"rate",name:"예약률",unit:"%",kind:"p"},{id:"visit",name:"내원",unit:"건",kind:"n"},
+  {id:"cc",name:"체결",unit:"건",kind:"n"},{id:"crate",name:"체결률",unit:"%",kind:"p"},
+  {id:"sales",name:"매출",unit:"",kind:"w"},
+  {id:"osq",name:"해외 문의",unit:"건",kind:"n"},{id:"osr",name:"해외 예약",unit:"건",kind:"n"},
+  {id:"osrate",name:"해외 예약률",unit:"%",kind:"p"},{id:"ov",name:"해외 내원",unit:"건",kind:"n"}];
+function showVal(v,kd){if(v==null)return "—";return kd==="p"?Math.round(v*100)+"%":kd==="w"?won(v):fmt(v)+"건";}
+
+/* 증감 표시 */
+function deltaCount(cur,prev){
+  var d=cur-prev, s=el("span");
+  if(d===0){s.className="fl";s.textContent="— 0";return s;}
+  s.className=d>0?"up":"dn";s.textContent=(d>0?"▲ ":"▼ ")+fmt(Math.abs(d))+"건";return s;
+}
+function deltaRate(cur,prev){
+  if(cur==null||prev==null)return el("span","fl","—");
+  var d=Math.round(cur*100)-Math.round(prev*100), s=el("span");
+  if(d===0){s.className="fl";s.textContent="— 0";return s;}
+  s.className=d>0?"up":"dn";s.textContent=(d>0?"▲ ":"▼ ")+Math.abs(d)+"%";return s;
+}
+function deltaWon(cur,prev){
+  var d=cur-prev, s=el("span");
+  if(Math.round(d/1e4)===0){s.className="fl";s.textContent="— 0";return s;}
+  var rel=prev>0?Math.round(d/prev*100):null;
+  s.className=d>0?"up":"dn";
+  s.textContent=(d>0?"▲ ":"▼ ")+wonShort(d)+(rel!=null?" ("+(d>0?"+":"−")+Math.abs(rel)+"%)":"");return s;
+}
+
+/* 상태 */
+var st={i0:0,i1:N-1,metric:"q"};
+function lastDone(){for(var i=N-1;i>=0;i--)if(!M[i].partial)return i;return 0;}
+function prevRange(){var n=st.i1-st.i0+1,p0=st.i0-n;return p0>=0?{i0:p0,i1:st.i0-1}:null;}
+
+/* 필터 UI */
+function buildFilters(){
+  [ $("m0"), $("m1") ].forEach(function(sel){
+    M.forEach(function(m,i){var o=el("option",null,"2026년 "+m.label+(m.partial?" (진행 중)":""));o.value=i;sel.appendChild(o);});
+  });
+  $("m0").addEventListener("change",function(){st.i0=+this.value;if(st.i1<st.i0)st.i1=st.i0;render();});
+  $("m1").addEventListener("change",function(){st.i1=+this.value;if(st.i0>st.i1)st.i0=st.i1;render();});
+  var ld=lastDone();
+  var P=[
+    {n:"전체",f:function(){return[0,N-1];}},
+    {n:"최근 6개월",f:function(){return[Math.max(0,N-6),N-1];}},
+    {n:"최근 3개월",f:function(){return[Math.max(0,N-3),N-1];}},
+    {n:"지난달~지금",f:function(){return[Math.max(0,N-2),N-1];}},
+    {n:"완료된 달 전체",f:function(){return[0,ld];}}];
+  P.forEach(function(p){
+    var b=el("button","pre",p.n);b.type="button";b.setAttribute("aria-pressed","false");b._p=p;
+    b.addEventListener("click",function(){var r=p.f();st.i0=r[0];st.i1=r[1];render();});
+    $("presets").appendChild(b);
+  });
+}
+function syncFilters(){
+  $("m0").value=st.i0;$("m1").value=st.i1;
+  Array.prototype.forEach.call($("presets").children,function(b){var r=b._p.f();b.setAttribute("aria-pressed",(r[0]===st.i0&&r[1]===st.i1)?"true":"false");});
+}
+
+/* 안내 */
+function renderNotice(t){
+  var n=$("notice");
+  if(!t.partial){n.hidden=true;return;}
+  var a=DATA.asof;
+  function md(s){return (+s.slice(5,7))+"/"+(+s.slice(8,10));}
+  n.hidden=false;
+  n.textContent="선택한 기간에 진행 중인 달이 포함되어 있습니다. 전화 "+md(a.phone)+"·내원 "+md(a.visit)+"·채널 "+md(a.plchin)+"까지 입력된 값이고, 매출은 "+md(a.sales)+"까지만 들어 있어 이번 달 매출은 아직 없습니다. 직전 기간과 단순 비교하면 낮게 보일 수 있습니다.";
+}
+
+/* 카드 */
+function renderCards(t){
+  var p=prevRange(), tp=p?sum(p.i0,p.i1):null;
+  var C=[];
+  C.push({h:"신규 문의 (합산)",v:fmt(t.q),u:"건",d:tp?function(){return deltaCount(t.q,tp.q);}:null});
+  C.push({h:"신규 예약 (합산)",v:fmt(t.r),u:"건",d:tp?function(){return deltaCount(t.r,tp.r);}:null});
+  C.push({h:"예약률",v:pctTxt(pct(t.r,t.q)),u:"",d:tp?function(){return deltaRate(pct(t.r,t.q),pct(tp.r,tp.q));}:null,prevTxt:tp?"직전 "+pctTxt(pct(tp.r,tp.q)):null});
+  C.push({h:"내원 (상담)",v:fmt(t.visit),u:"건",d:tp?function(){return deltaCount(t.visit,tp.visit);}:null});
+  C.push({h:"체결 · 체결률",v:fmt(t.cc),u:"건 · "+pctTxt(pct(t.cc,t.cv)),d:tp?function(){return deltaCount(t.cc,tp.cc);}:null,prevTxt:tp?"직전 체결률 "+pctTxt(pct(tp.cc,tp.cv)):null,extra:tp?function(){return deltaRate(pct(t.cc,t.cv),pct(tp.cc,tp.cv));}:null});
+  C.push({h:"매출"+(t.salesMonths<t.months?" ("+t.salesMonths+"개월분)":""),v:t.salesMonths?won(t.sales):"—",u:"",d:(tp&&t.salesMonths&&tp.salesMonths&&t.salesMonths===tp.salesMonths)?function(){return deltaWon(t.sales,tp.sales);}:null});
+  var box=$("cards");box.textContent="";
+  C.forEach(function(c){
+    var d=el("div","card");d.appendChild(el("h3",null,c.h));
+    var v=el("div","v",c.v);if(c.u)v.appendChild(el("small",null," "+c.u));d.appendChild(v);
+    var dd=el("div","d");
+    if(c.d){
+      dd.appendChild(el("span",null,"직전 대비 "));dd.appendChild(c.d());
+      if(c.extra){dd.appendChild(el("span",null," · 체결률 "));dd.appendChild(c.extra());}
+      if(c.prevTxt){dd.appendChild(el("span",null," ("+c.prevTxt+")"));}
+    }else if(!tp){dd.textContent="직전 기간 자료 없음";}
+    else if(c.h.indexOf("매출")===0){dd.textContent="직전 기간과 매출 입력 월 수가 달라 비교하지 않음";}
+    d.appendChild(dd);box.appendChild(d);
+  });
+}
+
+/* 그래프 (막대, 한 축, 선택 기간 강조) */
+function renderTabs(){
+  var tb=$("tabs");tb.textContent="";
+  METRICS.forEach(function(m){
+    var b=el("button","pre",m.name);b.type="button";b.setAttribute("role","tab");b.setAttribute("aria-pressed",m.id===st.metric?"true":"false");
+    b.addEventListener("click",function(){st.metric=m.id;render();});tb.appendChild(b);
+  });
+}
+function renderChart(){
+  var met=METRICS.filter(function(m){return m.id===st.metric;})[0];
+  $("chtTitle").textContent="월별 추이 — "+met.name;
+  var svg=$("cht"),cw=$("cw"),W=Math.max(300,cw.clientWidth),H=250;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);svg.setAttribute("width",W);svg.setAttribute("height",H);
+  while(svg.firstChild)svg.removeChild(svg.firstChild);
+  var NS="http://www.w3.org/2000/svg";
+  function se(tag,attrs){var e=document.createElementNS(NS,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);return e;}
+  var L=44,R=8,T=22,Bm=28, iw=W-L-R, ih=H-T-Bm;
+  var vals=M.map(function(m){return monthVal(m,met.id);});
+  var mx=0;vals.forEach(function(v){if(v!=null&&v>mx)mx=v;});
+  if(met.kind==="p")mx=Math.min(1,Math.max(mx*1.1,0.1));
+  if(mx<=0)mx=1;
+  // 눈금
+  var steps=4;
+  function nice(x){var p=Math.pow(10,Math.floor(Math.log(x)/Math.LN10)),f=x/p;var n=f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10;return n*p;}
+  var stepV=met.kind==="p"?(mx>0.5?0.25:0.1):nice(mx/steps);
+  var top=Math.ceil(mx/stepV)*stepV;
+  for(var g=0;g<=top+1e-9;g+=stepV){
+    var y=T+ih-(g/top)*ih;
+    svg.appendChild(se("line",{x1:L,x2:W-R,y1:y,y2:y,"class":g===0?"base":"grid"}));
+    var tx=se("text",{x:L-6,y:y+4,"text-anchor":"end"});
+    tx.textContent=g===0?"0":met.kind==="p"?Math.round(g*100)+"%":met.kind==="w"?(g>=1e8?(g/1e8)+"억":Math.round(g/1e4)+"만"):fmt(g);
+    svg.appendChild(tx);
+  }
+  var bw=iw/N, bar=Math.min(46,bw*0.62);
+  var maxI=-1,lastI=-1;vals.forEach(function(v,i){if(v!=null){if(maxI<0||v>vals[maxI])maxI=i;lastI=i;}});
+  var tip=$("tip");
+  M.forEach(function(m,i){
+    var v=vals[i],cx=L+bw*i+bw/2,inSel=i>=st.i0&&i<=st.i1;
+    var lab=se("text",{x:cx,y:H-9,"text-anchor":"middle"});lab.textContent=m.label;if(inSel)lab.setAttribute("style","fill:var(--t1);font-weight:600");svg.appendChild(lab);
+    if(v==null){var na=se("text",{x:cx,y:T+ih-6,"text-anchor":"middle"});na.textContent="없음";svg.appendChild(na);}
+    else{
+      var h=Math.max(1,(v/top)*ih),y=T+ih-h;
+      var r=se("rect",{x:cx-bar/2,y:y,width:bar,height:h,rx:3,fill:"var(--s1)","fill-opacity":inSel?(m.partial?0.55:1):0.22});
+      if(m.partial){r.setAttribute("stroke","var(--s1)");r.setAttribute("stroke-dasharray","4 3");r.setAttribute("stroke-width","1.5");}
+      svg.appendChild(r);
+      if(i===maxI||i===lastI){var vt=se("text",{x:cx,y:y-5,"text-anchor":"middle","class":"lbl"});vt.textContent=showVal(v,met.kind).replace("건","");svg.appendChild(vt);}
+    }
+    var hit=se("rect",{x:L+bw*i,y:T,width:bw,height:ih+Bm,fill:"transparent",tabindex:0,"aria-label":m.label+" "+met.name+" "+showVal(v,met.kind)});
+    function show(){tip.textContent="";var b=el("b",null,showVal(v,met.kind));tip.appendChild(b);tip.appendChild(el("span",null,"2026년 "+m.label+(m.partial?" (진행 중)":"")+" · "+met.name));
+      tip.style.display="block";var tw=tip.offsetWidth;var left=Math.min(Math.max(cx-tw/2,0),W-tw);tip.style.left=left+"px";tip.style.top=Math.max(0,T-6)+"px";}
+    hit.addEventListener("pointerenter",show);hit.addEventListener("pointermove",show);hit.addEventListener("focus",show);
+    hit.addEventListener("pointerleave",function(){tip.style.display="none";});hit.addEventListener("blur",function(){tip.style.display="none";});
+    svg.appendChild(hit);
+  });
+  var lg=$("legend");lg.textContent="";
+  var a=el("span");var i1=el("i");i1.style.background="var(--s1)";a.appendChild(i1);a.appendChild(document.createTextNode("선택한 기간"));lg.appendChild(a);
+  var b=el("span");var i2=el("i");i2.style.background="var(--s1)";i2.style.opacity=".22";b.appendChild(i2);b.appendChild(document.createTextNode("그 밖의 달"));lg.appendChild(b);
+  if(M.some(function(m){return m.partial;})){var c=el("span");var i3=el("i");i3.style.border="1.5px dashed var(--s1)";c.appendChild(i3);c.appendChild(document.createTextNode("진행 중인 달"));lg.appendChild(c);}
+}
+
+/* 채널 표 */
+function renderChannels(t){
+  var p=prevRange(),tp=p?sum(p.i0,p.i1):null;
+  $("chRange").textContent="· 2026년 "+M[st.i0].label+" ~ "+M[st.i1].label;
+  var tb=$("chTable");tb.textContent="";
+  var hr=el("tr");["채널","문의","예약","예약률","직전 대비 문의","직전 대비 예약"].forEach(function(h){hr.appendChild(el("th",null,h));});
+  tb.appendChild(hr);
+  function row(name,cur,prev,cls){
+    var r=el("tr",cls||"");r.appendChild(el("td",null,name));
+    r.appendChild(el("td",null,fmt(cur.q)));r.appendChild(el("td",null,fmt(cur.r)));r.appendChild(el("td",null,pctTxt(pct(cur.r,cur.q))));
+    var d1=el("td"),d2=el("td");
+    if(prev){d1.appendChild(deltaCount(cur.q,prev.q));d2.appendChild(deltaCount(cur.r,prev.r));}else{d1.textContent="—";d2.textContent="—";}
+    r.appendChild(d1);r.appendChild(d2);tb.appendChild(r);
+  }
+  CHAN.forEach(function(c){row(c.name,t.ch[c.k],tp?tp.ch[c.k]:null);});
+  row("합산",{q:t.q,r:t.r},tp?{q:tp.q,r:tp.r}:null,"sum");
+  SIDE.forEach(function(c){row(c.name+" *",{q:t.side[c.k].q,r:t.side[c.k].r},tp?{q:tp.side[c.k].q,r:tp.side[c.k].r}:null,"ref");});
+  var fn=$("chFn");fn.textContent="";
+  [ "합산 = 전화 + 플친 + 이메일 + 왓츠앱 + 위챗 + 라인. * 네이버·게시판은 전화 예약으로 처리되므로 합산에서 제외하고 참고로만 보여줍니다.",
+    "채팅 채널 문의 = 문의 + 미응답 + 예약, 네이버·게시판 문의 = 문의 + 예약(부재 제외). 진료과목 '기타'와 과목 미확인은 제외했습니다.",
+    tp?"직전 기간 = 선택한 기간 바로 앞의 같은 개월 수 (2026년 "+M[p.i0].label+" ~ "+M[p.i1].label+")":"직전 기간 자료가 없어 비교하지 않습니다 (자료는 2026년 1월부터)."
+  ].forEach(function(s){fn.appendChild(el("li",null,s));});
+}
+
+/* 해외 */
+function renderOverseas(t){
+  var p=prevRange(),tp=p?sum(p.i0,p.i1):null;
+  $("osRange").textContent="· 2026년 "+M[st.i0].label+" ~ "+M[st.i1].label;
+  var box=$("osCards");box.textContent="";
+  var share=pct(t.ov[0],t.visit), shareP=tp?pct(tp.ov[0],tp.visit):null;
+  var C=[
+    {h:"해외 문의",v:fmt(t.osq),u:"건",d:tp?function(){return deltaCount(t.osq,tp.osq);}:null},
+    {h:"해외 예약",v:fmt(t.osr),u:"건",d:tp?function(){return deltaCount(t.osr,tp.osr);}:null},
+    {h:"해외 예약률",v:pctTxt(pct(t.osr,t.osq)),u:"",d:tp?function(){return deltaRate(pct(t.osr,t.osq),pct(tp.osr,tp.osq));}:null,prevTxt:tp?"직전 "+pctTxt(pct(tp.osr,tp.osq)):null},
+    {h:"해외 내원",v:fmt(t.ov[0]),u:"건 · 전체 내원의 "+(share==null?"—":(Math.round(share*1000)/10)+"%"),d:tp?function(){return deltaCount(t.ov[0],tp.ov[0]);}:null,prevTxt:tp?"직전 "+(shareP==null?"—":(Math.round(shareP*1000)/10)+"%"):null}];
+  C.forEach(function(c){
+    var d=el("div","card");d.appendChild(el("h3",null,c.h));
+    var v=el("div","v",c.v);if(c.u)v.appendChild(el("small",null," "+c.u));d.appendChild(v);
+    var dd=el("div","d");
+    if(c.d){dd.appendChild(el("span",null,"직전 대비 "));dd.appendChild(c.d());if(c.prevTxt)dd.appendChild(el("span",null," ("+c.prevTxt+")"));}
+    else dd.textContent="직전 기간 자료 없음";
+    d.appendChild(dd);box.appendChild(d);
+  });
+  // 채널별
+  var tb=$("osTable");tb.textContent="";
+  var hr=el("tr");["채널","해외 문의","해외 예약","예약률","직전 대비 문의","직전 대비 예약"].forEach(function(h){hr.appendChild(el("th",null,h));});tb.appendChild(hr);
+  function row(name,cur,prev,cls){
+    var r=el("tr",cls||"");r.appendChild(el("td",null,name));
+    r.appendChild(el("td",null,fmt(cur.q)));r.appendChild(el("td",null,fmt(cur.r)));r.appendChild(el("td",null,pctTxt(pct(cur.r,cur.q))));
+    var d1=el("td"),d2=el("td");
+    if(prev){d1.appendChild(deltaCount(cur.q,prev.q));d2.appendChild(deltaCount(cur.r,prev.r));}else{d1.textContent="—";d2.textContent="—";}
+    r.appendChild(d1);r.appendChild(d2);tb.appendChild(r);
+  }
+  OSCH.forEach(function(c){row(c.name,t.os[c.k],tp?tp.os[c.k]:null);});
+  row("해외 합계",{q:t.osq,r:t.osr},tp?{q:tp.osq,r:tp.osr}:null,"sum");
+  // 해외 내원 과목별
+  var vt=$("osVisit");vt.textContent="";
+  var h2=el("tr");["구분"].concat(OSSUB).concat(["기타","합계"]).forEach(function(h){h2.appendChild(el("th",null,h));});vt.appendChild(h2);
+  function vrow(name,ov,cls){
+    var r=el("tr",cls||"");r.appendChild(el("td",null,name));
+    var known=0;for(var j=1;j<=6;j++){r.appendChild(el("td",null,fmt(ov[j])));known+=ov[j];}
+    r.appendChild(el("td",null,fmt(ov[0]-known)));r.appendChild(el("td",null,fmt(ov[0])));vt.appendChild(r);
+  }
+  vrow("선택 기간",t.ov,"sum");
+  if(tp)vrow("직전 기간",tp.ov,"ref");
+  var fn=$("osFn");fn.textContent="";
+  ["해외 문의·예약(채널 기준): 플친·이메일은 '국내·해외' 칸이 해외인 건, 왓츠앱·위챗·라인은 전체를 해외로 집계, 네이버·게시판은 엑셀의 해외 칸 기준입니다. 전화는 해외 구분이 없어 포함되지 않습니다.",
+   "해외 합계에는 네이버·게시판 해외가 들어 있어, 위 '신규 문의(합산)'(네이버·게시판 제외)과 기준이 다릅니다. 진료과목 '기타'·과목 미확인은 제외했습니다.",
+   "해외 내원은 내원현황 '내원후' 시트의 해외여부 입력 기준이며, 문의·예약(채널 기준)과 정의가 달라 서로 맞추지 않았습니다(이전 달에 예약한 고객이 내원할 수도 있음). '기타'에는 원형탈모 등 위 6개 과목 외 내원이 들어갑니다.",
+   "해외 체결은 해외 구분 기준이 아직 정해지지 않아 넣지 않았습니다. 해외여부 입력이 빠진 내원은 해외로 잡히지 않습니다(확인 필요)."
+  ].forEach(function(s){fn.appendChild(el("li",null,s));});
+}
+
+/* 월별 표 */
+function renderMonthTable(t){
+  var tb=$("moTable");tb.textContent="";
+  var hr=el("tr");["월","신규 문의","신규 예약","예약률","내원","체결","체결률","매출"].forEach(function(h){hr.appendChild(el("th",null,h));});tb.appendChild(hr);
+  function line(name,x,cls){
+    var r=el("tr",cls||"");r.appendChild(el("td",null,name));
+    [fmt(x.q),fmt(x.r),pctTxt(pct(x.r,x.q)),fmt(x.visit),fmt(x.cc),pctTxt(pct(x.cc,x.cv)),x.sales==null?"—":won(x.sales)].forEach(function(s){r.appendChild(el("td",null,s));});
+    tb.appendChild(r);
+  }
+  M.forEach(function(m,i){
+    var s=sum(i,i);
+    line(m.label+(m.partial?" (진행 중)":""),{q:s.q,r:s.r,visit:s.visit,cc:s.cc,cv:s.cv,sales:m.sa},(i>=st.i0&&i<=st.i1)?"":"dim");
+  });
+  line("선택 기간 합계",{q:t.q,r:t.r,visit:t.visit,cc:t.cc,cv:t.cv,sales:t.salesMonths?t.sales:null},"sum");
+}
+
+function renderNotes(){
+  var n=$("notes");n.textContent="";
+  [ "숫자는 엑셀 원본(콜현황·네이버/게시판·채팅 채널·내원현황)을 월별로 다시 센 값이며, 9월·10월은 엑셀에 저장된 현황 값과 일치하는 것을 확인했습니다.",
+    "체결·체결률은 상담 내원 중 모발이식·헤어라인·SMP·탈모치료·기타이식·반영구 과목 기준입니다. 검사·처방 등은 체결 대상이 아니므로 내원 건수(전체 상담 내원)와 체결률의 분모는 다릅니다.",
+    "예약률 = 예약 ÷ 문의, 체결률 = 체결 ÷ 상담 내원(위 과목). 합계는 월별 건수를 더한 뒤 비율을 다시 계산한 값입니다.",
+    "체결은 이후 취소·변경이 반영된 최신 엑셀 기준이라 이전 보고서와 몇 건 다를 수 있습니다.",
+    "매출은 수납현황의 예약금·진료비·제품·잔금·처방전·재수술·키오머 합계입니다 (검사비·서류발급비 제외, 엑셀 매출현황과 같은 기준).",
+    "총예약·내원전 취소율·부도 등은 엑셀 요약표의 기준을 아직 확인하지 못해 이 화면에 넣지 않았습니다."
+  ].forEach(function(s){n.appendChild(el("li",null,s));});
+}
+
+function render(){
+  syncFilters();
+  var t=sum(st.i0,st.i1);
+  renderNotice(t);renderCards(t);renderTabs();renderChart();renderChannels(t);renderOverseas(t);renderMonthTable(t);
+}
+document.getElementById("back").href=REPORT_URL;
+$("sub").textContent="엑셀 기준 "+DATA.generated+" · 2026년 1월부터 · 월 단위로 합산";
+buildFilters();renderNotes();render();
+var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(renderChart,120);});
+})();
+</script>
+</body>
+</html>
