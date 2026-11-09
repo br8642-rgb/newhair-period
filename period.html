@@ -8,6 +8,7 @@
 :root{
   --bg:#f3f3f0; --surface:#fcfcfb; --line:#e3e2dd; --grid:#ecebe6;
   --t1:#0b0b0b; --t2:#52514e; --t3:#807f7a;
+  --c1:#2a78d6; --c2:#e08a1e; --c3:#2a9d6f; --c4:#8a5cd6; --c5:#d03a8a; --c6:#7d8794;
   --s1:#2a78d6; --up:#d03a39; --down:#2a78d6; --warn-bg:#fff6dd; --warn-t:#6b4a00;
   color-scheme:light;
 }
@@ -15,6 +16,7 @@
   :root{
     --bg:#111110; --surface:#1a1a19; --line:#2e2e2b; --grid:#262624;
     --t1:#f0efec; --t2:#c3c2b7; --t3:#9a998f;
+    --c1:#3987e5; --c2:#f0a03c; --c3:#3cb584; --c4:#a384ec; --c5:#e866a6; --c6:#9aa3ad;
     --s1:#3987e5; --up:#e66767; --down:#5a9bf0; --warn-bg:#2b2410; --warn-t:#f0d58a;
     color-scheme:dark;
   }
@@ -77,6 +79,12 @@ details summary{cursor:pointer;font-weight:600;font-size:15px}
 td.c,th.c{text-align:center}
 tr.sub td{color:var(--t2)}
 details.mx{margin-top:12px}
+.gc{margin:2px 0 12px}
+.cap{font-size:12px;color:var(--t2);margin:0 0 4px}
+svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
+.donutwrap{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+.dlegend{font-size:12.5px;color:var(--t2);display:grid;gap:3px}
+.dlegend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
 @media (max-width:640px){
   .cards{grid-template-columns:repeat(2,1fr)}
   .card .v{font-size:21px}
@@ -124,6 +132,7 @@ details.mx{margin-top:12px}
   <div id="p-ch" hidden>
   <section class="box">
     <h2>채널별 현황 <span style="font-weight:400;color:var(--t2);font-size:13px" id="chRange"></span></h2>
+    <div class="gc" id="chChart"></div>
     <div class="tw"><table id="chTable"></table></div>
     <ul class="fn" id="chFn"></ul>
   </section>
@@ -133,6 +142,9 @@ details.mx{margin-top:12px}
   <div id="p-sj" hidden>
   <section class="box">
     <h2>진료 과목별 신규 문의·예약 <span style="font-weight:400;color:var(--t2);font-size:13px" id="sjRange"></span></h2>
+    <div class="gc" id="sjChart"></div>
+    <h3 class="sh">문의 비중 (합산, 기타·미확인 제외)</h3>
+    <div class="gc donutwrap" id="sjDonut"></div>
     <div class="tw"><table id="sjTable"></table></div>
     <ul class="fn" id="sjFn"></ul>
     <details class="mx"><summary>과목 × 채널 (문의 / 예약)</summary><div class="tw" style="margin-top:8px"><table id="sjMx"></table></div></details>
@@ -145,8 +157,10 @@ details.mx{margin-top:12px}
     <h2>해외 고객 <span style="font-weight:400;color:var(--t2);font-size:13px" id="osRange"></span></h2>
     <div class="cards" id="osCards"></div>
     <h3 class="sh">채널별 해외 문의·예약</h3>
+    <div class="gc" id="osChart"></div>
     <div class="tw"><table id="osTable"></table></div>
     <h3 class="sh">해외 내원 (과목별)</h3>
+    <div class="gc" id="ovChart"></div>
     <div class="tw"><table id="osVisit"></table></div>
     <ul class="fn" id="osFn"></ul>
   </section>
@@ -158,6 +172,7 @@ details.mx{margin-top:12px}
     <h2>체결 <span style="font-weight:400;color:var(--t2);font-size:13px" id="clRange"></span></h2>
     <div class="cards" id="clCards"></div>
     <h3 class="sh">과목별 상담 내원·체결</h3>
+    <div class="gc" id="clChart"></div>
     <div class="tw"><table id="clTable"></table></div>
     <ul class="fn" id="clFn"></ul>
     <details class="mx"><summary>월별 과목별 체결률 (체결률 · 체결/상담)</summary><div class="tw" style="margin-top:8px"><table id="clMo"></table></div></details>
@@ -167,12 +182,14 @@ details.mx{margin-top:12px}
   <div id="p-dr" hidden>
   <section class="box">
     <h2>원장님 <span style="font-weight:400;color:var(--t2);font-size:13px" id="drRange"></span></h2>
+    <div class="gc" id="drChart"></div>
     <div class="tw"><table id="drTable"></table></div>
     <ul class="fn" id="drFn"></ul>
     <details class="mx"><summary>원장님 × 과목 (체결률 · 체결/상담)</summary><div class="tw" style="margin-top:8px"><table id="drMx"></table></div></details>
   </section>
   <section class="box">
     <h2>직원 <span style="font-weight:400;color:var(--t2);font-size:13px" id="stRange"></span></h2>
+    <div class="gc" id="stChart"></div>
     <div class="tw"><table id="stTable"></table></div>
     <ul class="fn" id="stFn"></ul>
     <details class="mx"><summary>직원 × 과목 (체결률 · 체결/상담)</summary><div class="tw" style="margin-top:8px"><table id="stMx"></table></div></details>
@@ -414,6 +431,7 @@ function renderChannels(t){
   CHAN.forEach(function(c){row(c.name,t.ch[c.k],tp?tp.ch[c.k]:null);});
   row("합산",{q:t.q,r:t.r},tp?{q:tp.q,r:tp.r}:null,"sum");
   SIDE.forEach(function(c){row(c.name+" *",{q:t.side[c.k].q,r:t.side[c.k].r},tp?{q:tp.side[c.k].q,r:tp.side[c.k].r}:null,"ref");});
+  if(st.tab==="ch")hbar("chChart",CHAN.map(function(c){return {n:c.name,v:t.ch[c.k].q,w:t.ch[c.k].r,t:qrText(t.ch[c.k].q,t.ch[c.k].r),s:qrShort(t.ch[c.k].q,t.ch[c.k].r)};}),{w:true,cap:"연한 막대 = 문의, 진한 막대 = 예약 (합산 6개 채널)",aria:"채널별 문의와 예약 막대 그래프"});
   var fn=$("chFn");fn.textContent="";
   [ "합산 = 전화 + 플친 + 이메일 + 왓츠앱 + 위챗 + 라인. * 네이버·게시판은 전화 예약으로 처리되므로 합산에서 제외하고 참고로만 보여줍니다.",
     "채팅 채널 문의 = 문의 + 미응답 + 예약, 네이버·게시판 문의 = 문의 + 예약(부재 제외). 진료과목 '기타'와 과목 미확인은 제외했습니다.",
@@ -462,6 +480,12 @@ function renderOverseas(t){
   }
   vrow("선택 기간",t.ov,"sum");
   if(tp)vrow("직전 기간",tp.ov,"ref");
+  if(st.tab==="os"){
+    hbar("osChart",OSCH.map(function(c){return {n:c.name,v:t.os[c.k].q,w:t.os[c.k].r,t:qrText(t.os[c.k].q,t.os[c.k].r),s:qrShort(t.os[c.k].q,t.os[c.k].r)};}),{w:true,cap:"연한 막대 = 해외 문의, 진한 막대 = 해외 예약",aria:"채널별 해외 문의와 예약"});
+    var ovr=OSSUB.map(function(n,j){return {n:n,v:t.ov[j+1],t:fmt(t.ov[j+1])+"건"};});
+    var ovk=0;for(var j=1;j<=6;j++)ovk+=t.ov[j];if(t.ov[0]-ovk>0)ovr.push({n:"기타",v:t.ov[0]-ovk,t:fmt(t.ov[0]-ovk)+"건"});
+    hbar("ovChart",ovr,{aria:"해외 내원 과목별"});
+  }
   var fn=$("osFn");fn.textContent="";
   ["해외 문의·예약(채널 기준): 플친·이메일은 '국내·해외' 칸이 해외인 건, 왓츠앱·위챗·라인은 전체를 해외로 집계, 네이버·게시판은 엑셀의 해외 칸 기준입니다. 전화는 해외 구분이 없어 포함되지 않습니다.",
    "해외 합계에는 네이버·게시판 해외가 들어 있어, 위 '신규 문의(합산)'(네이버·게시판 제외)과 기준이 다릅니다. 진료과목 '기타'·과목 미확인은 제외했습니다.",
@@ -555,6 +579,11 @@ function renderSubjects(t,tp,p){
   SJ.forEach(function(s){rowQR(tb,s[1],subjSum(X,s[0]),XP?subjSum(XP,s[0]):null);});
   rowQR(tb,"기타·과목 미확인",resSum(X),XP?resSum(XP):null,"ref");
   rowQR(tb,"합산",[t.q,t.r],tp?[tp.q,tp.r]:null,"sum");
+  if(st.tab==="sj"){
+    var sr_=SJ.map(function(s){var a=subjSum(X,s[0]);return {n:s[1],v:a[0],w:a[1],t:qrText(a[0],a[1]),s:qrShort(a[0],a[1])};});
+    hbar("sjChart",sr_,{w:true,cap:"연한 막대 = 문의, 진한 막대 = 예약",aria:"과목별 문의와 예약"});
+    donut("sjDonut",SJ.map(function(s){return {n:s[1],v:subjSum(X,s[0])[0]};}));
+  }
   fnInto("sjFn",["합산 = 전화 + 플친 + 이메일 + 왓츠앱 + 위챗 + 라인 (위 '신규 문의(합산)'과 같은 기준). 네이버·게시판은 합산에 넣지 않고 아래 표에 참고(*)로만 보여줍니다.",
     "'기타·과목 미확인'은 합산에서 위 6개 과목에 잡히지 않은 건입니다(전화의 '기타' 과목 등). 임의로 과목에 넣지 않았습니다.",
     "과목별 예약률은 문의가 적은 과목(검사·처방 등)에서 몇 건 차이로 크게 달라질 수 있습니다.",prevNote(p)]);
@@ -606,6 +635,11 @@ function renderClosing(t,tp,p){
   var sp=X.cs["검사"][0]+X.cs["처방"][0], rest=t.visit-t.cv-sp;
   var r1=el("tr","ref");r1.appendChild(el("td",null,"검사·처방 (체결 대상 아님)"));r1.appendChild(el("td",null,fmt(sp)));["체결","체결률","","",""].forEach(function(x){r1.appendChild(el("td",null,x?"—":""));});tb.appendChild(r1);
   var r2=el("tr","ref");r2.appendChild(el("td",null,"그 밖의 내원 (기타·키오머 등)"));r2.appendChild(el("td",null,fmt(rest)));["체결","체결률","","",""].forEach(function(x){r2.appendChild(el("td",null,x?"—":""));});tb.appendChild(r2);
+  if(st.tab==="cl"){
+    var cr=[];CL6.forEach(function(g){var a=X.cs[g];if(a[0]>0)cr.push({n:g,v:a[0]>0?a[1]/a[0]:0,t:vcText(a[0],a[1])});});
+    cr.push({n:"전체",v:pct(t.cc,t.cv)||0,t:vcText(t.cv,t.cc)});
+    hbar("clChart",cr,{max:1,cap:"과목별 체결률 (괄호 안은 체결/상담 내원)",aria:"과목별 체결률 막대 그래프"});
+  }
   fnInto("clFn",["체결 = 상담 내원 중 수술확정·예약금결제(탈모치료는 치료확정 포함)인 건, 체결률 = 체결 ÷ 상담 내원. 체결 대상 과목은 모발이식·헤어라인·SMP·탈모치료·기타이식·반영구입니다.",
     "검사·처방 등 체결 대상이 아닌 내원은 체결률 분모에 넣지 않습니다. 합계 + 검사·처방 + 그 밖의 내원 = 전체 상담 내원입니다.",
     "체결은 이후 취소·변경이 반영된 최신 엑셀 기준이라 이전 보고서와 몇 건 다를 수 있습니다.",prevNote(p)]);
@@ -668,6 +702,12 @@ function renderPeople(t,tp,p){
   var L6=[["모발이식",["모발이식"]],["헤어라인",["헤어라인"]],["SMP",["SMP"]],["탈모치료",["탈모치료"]],["기타이식·반영구",["기타이식","반영구"]]];
   var L4=[["모발이식",["모발이식"]],["헤어라인",["헤어라인"]],["SMP",["SMP"]],["탈모치료",["탈모치료"]]];
   peopleMx("drMx",DOCS,X.dr,CL6,L6);peopleMx("stMx",STAFF_NOW,X.st,CL4,L4);
+  if(st.tab==="dr"){
+    var dr_=[];DOCS.forEach(function(n){var a=sumGroups(X.dr[n],CL6);if(a[0]>0)dr_.push({n:n,v:a[1]/a[0],t:vcText(a[0],a[1])});});
+    hbar("drChart",dr_,{max:1,cap:"원장님별 체결률 (괄호 안은 체결/상담)",aria:"원장님별 체결률"});
+    var st_=[];STAFF_NOW.forEach(function(n){var a=sumGroups(X.st[n],CL4);if(a[0]>0)st_.push({n:n,v:a[1]/a[0],t:vcText(a[0],a[1])});});
+    hbar("stChart",st_,{max:1,cap:"직원별 체결률 (괄호 안은 체결/상담)",aria:"직원별 체결률"});
+  }
   fnInto("drFn",["원장님 표는 내원후 시트의 '담당의사' 칸 기준, 체결 대상 6과목의 상담 내원만 셉니다. 담당의사 칸에 두 명 이상 적힌 상담은 한 분에게 넣지 않아 합계가 전체보다 적을 수 있습니다(이 기간 "+X.dro+"건).",
     "체결·체결률 기준은 '체결' 탭과 같습니다. 상담 20건 이하인 분은 몇 건 차이로 체결률이 크게 달라집니다.",prevNote(p)]);
   var f=["직원 표는 모발이식·헤어라인·SMP·탈모치료 4개 과목만, 담당 직원이 있는 상담만 세므로 원장님이 직접 상담·성사한 건 등은 빠져 직원 합계가 아래 '전체'보다 적습니다.",
@@ -689,6 +729,60 @@ function syncMainTabs(){
     $("p-"+tb.id).hidden=tb.id!==st.tab;
   });
 }
+
+
+/* ---- 가로 막대 / 도넛 ---- */
+var NS_="http://www.w3.org/2000/svg";
+function sv(tag,attrs){var e=document.createElementNS(NS_,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);return e;}
+function hbar(id,rows,cfg){
+  var box=$(id);box.textContent="";cfg=cfg||{};
+  if(!rows.length){box.appendChild(el("p","cap","표시할 자료가 없습니다."));return;}
+  var W=Math.max(280,box.clientWidth),small=W<460;
+  if(cfg.cap)box.appendChild(el("p","cap",cfg.cap+(small&&cfg.w?" · 숫자 = 문의/예약 (예약률)":"")));
+  var LW=small?72:92,RW=cfg.w?(small?122:200):(small?112:158),rh=cfg.w?30:26,H=rows.length*rh+4;
+  var svg=sv("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H,role:"img","aria-label":cfg.aria||"막대 그래프"});
+  var mx=cfg.max||0;rows.forEach(function(r){if(r.v>mx)mx=r.v;});if(!mx)mx=1;
+  var pw=W-LW-RW,bh=cfg.w?16:14;
+  rows.forEach(function(r,i){
+    var y=i*rh+2,by=y+(rh-bh)/2,wv=Math.max(r.v>0?2:0,pw*r.v/mx);
+    var lb=sv("text",{x:LW-8,y:y+rh/2+4,"text-anchor":"end"});lb.textContent=r.n;svg.appendChild(lb);
+    var g=sv("g",{});var tt=sv("title",{});tt.textContent=r.n+" · "+r.t;g.appendChild(tt);
+    g.appendChild(sv("rect",{x:LW,y:by,width:wv,height:bh,rx:3,fill:"var(--s1)","fill-opacity":cfg.w?0.28:1}));
+    if(cfg.w&&r.w>0)g.appendChild(sv("rect",{x:LW,y:by,width:Math.max(2,pw*r.w/mx),height:bh,rx:3,fill:"var(--s1)"}));
+    var vt=sv("text",{x:LW+wv+6,y:y+rh/2+4,"class":"v2"});vt.textContent=(small&&r.s)?r.s:r.t;g.appendChild(vt);
+    svg.appendChild(g);
+  });
+  box.appendChild(svg);
+}
+function donut(id,rows){
+  var box=$(id);box.textContent="";
+  var tot=0;rows.forEach(function(r){tot+=r.v;});
+  if(!tot){box.appendChild(el("p","cap","표시할 자료가 없습니다."));return;}
+  var S=156,R=70,r0=42,cx=S/2,cy=S/2;
+  var svg=sv("svg",{viewBox:"0 0 "+S+" "+S,width:S,height:S,role:"img","aria-label":"문의 비중 도넛 그래프"});
+  var a0=-Math.PI/2;
+  rows.forEach(function(r,i){
+    if(r.v<=0)return;var frac=r.v/tot,a1=a0+frac*2*Math.PI,col="var(--c"+(i%6+1)+")";
+    var tt=sv("title",{});tt.textContent=r.n+" "+fmt(r.v)+"건 ("+Math.round(frac*100)+"%)";
+    var e;
+    if(frac>0.9999){e=sv("circle",{cx:cx,cy:cy,r:(R+r0)/2,fill:"none",stroke:col,"stroke-width":R-r0});}
+    else{
+      var x0=cx+R*Math.cos(a0),y0=cy+R*Math.sin(a0),x1=cx+R*Math.cos(a1),y1=cy+R*Math.sin(a1),
+          x2=cx+r0*Math.cos(a1),y2=cy+r0*Math.sin(a1),x3=cx+r0*Math.cos(a0),y3=cy+r0*Math.sin(a0),lg=frac>0.5?1:0;
+      e=sv("path",{d:"M"+x0+" "+y0+"A"+R+" "+R+" 0 "+lg+" 1 "+x1+" "+y1+"L"+x2+" "+y2+"A"+r0+" "+r0+" 0 "+lg+" 0 "+x3+" "+y3+"Z",fill:col,stroke:"var(--surface)","stroke-width":1.5});
+    }
+    e.appendChild(tt);svg.appendChild(e);a0=a1;
+  });
+  var c1=sv("text",{x:cx,y:cy-1,"text-anchor":"middle","class":"v2"});c1.textContent=fmt(tot)+"건";svg.appendChild(c1);
+  var c2=sv("text",{x:cx,y:cy+14,"text-anchor":"middle"});c2.textContent="문의";svg.appendChild(c2);
+  box.appendChild(svg);
+  var lg=el("div","dlegend");
+  rows.forEach(function(r,i){var d=el("div");var sw=el("i");sw.style.background="var(--c"+(i%6+1)+")";d.appendChild(sw);d.appendChild(document.createTextNode(r.n+" "+fmt(r.v)+"건 ("+Math.round(r.v/tot*100)+"%)"));lg.appendChild(d);});
+  box.appendChild(lg);
+}
+function qrShort(q,r){return fmt(q)+"/"+fmt(r)+" ("+pctTxt(pct(r,q))+")";}
+function qrText(q,r){return "문의 "+fmt(q)+" · 예약 "+fmt(r)+" ("+pctTxt(pct(r,q))+")";}
+function vcText(v,c){return v>0?pctTxt(c/v)+" ("+c+"/"+v+")":"—";}
 
 function renderNotes(){
   var n=$("notes");n.textContent="";
@@ -715,7 +809,7 @@ document.getElementById("back").href=REPORT_URL;
 $("sub").textContent="엑셀 기준 "+DATA.generated+" · 2026년 1월부터 · 월 단위로 합산";
 (function(){var h=(location.hash||"").replace("#","");TABS.forEach(function(x){if(x.id===h)st.tab=h;});})();
 buildFilters();buildMainTabs();renderNotes();render();
-var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(function(){if(st.tab==="all")renderChart();},120);});
+var rt;window.addEventListener("resize",function(){clearTimeout(rt);rt=setTimeout(render,120);});
 })();
 </script>
 </body>
