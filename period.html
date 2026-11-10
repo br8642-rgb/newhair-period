@@ -90,6 +90,7 @@ svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
   .card .v{font-size:21px}
   .presets{margin-left:0}
 }
+.trbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -132,6 +133,10 @@ svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
   <div id="p-ch" hidden>
   <section class="box">
     <h2>채널별 현황 <span style="font-weight:400;color:var(--t2);font-size:13px" id="chRange"></span></h2>
+    
+    <h3 class="sh">월별 추이 — 선택한 기간의 달별 변화</h3>
+    <div class="gc" id="chTrend"></div>
+    <h3 class="sh">기간 합계</h3>
     <div class="gc" id="chChart"></div>
     <div class="tw"><table id="chTable"></table></div>
     <ul class="fn" id="chFn"></ul>
@@ -142,6 +147,10 @@ svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
   <div id="p-sj" hidden>
   <section class="box">
     <h2>진료 과목별 신규 문의·예약 <span style="font-weight:400;color:var(--t2);font-size:13px" id="sjRange"></span></h2>
+    
+    <h3 class="sh">월별 추이 — 선택한 기간의 달별 변화</h3>
+    <div class="gc" id="sjTrend"></div>
+    <h3 class="sh">기간 합계</h3>
     <div class="gc" id="sjChart"></div>
     <h3 class="sh">문의 비중 (합산, 기타·미확인 제외)</h3>
     <div class="gc donutwrap" id="sjDonut"></div>
@@ -156,7 +165,10 @@ svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
   <section class="box" id="osBox">
     <h2>해외 고객 <span style="font-weight:400;color:var(--t2);font-size:13px" id="osRange"></span></h2>
     <div class="cards" id="osCards"></div>
-    <h3 class="sh">채널별 해외 문의·예약</h3>
+    
+    <h3 class="sh">월별 추이 — 선택한 기간의 달별 변화</h3>
+    <div class="gc" id="osTrend"></div>
+    <h3 class="sh">채널별 해외 문의·예약 (기간 합계)</h3>
     <div class="gc" id="osChart"></div>
     <div class="tw"><table id="osTable"></table></div>
     <h3 class="sh">해외 내원 (과목별)</h3>
@@ -171,7 +183,10 @@ svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
   <section class="box">
     <h2>체결 <span style="font-weight:400;color:var(--t2);font-size:13px" id="clRange"></span></h2>
     <div class="cards" id="clCards"></div>
-    <h3 class="sh">과목별 상담 내원·체결</h3>
+    
+    <h3 class="sh">월별 추이 — 선택한 기간의 달별 변화</h3>
+    <div class="gc" id="clTrend"></div>
+    <h3 class="sh">과목별 상담 내원·체결 (기간 합계)</h3>
     <div class="gc" id="clChart"></div>
     <div class="tw"><table id="clTable"></table></div>
     <ul class="fn" id="clFn"></ul>
@@ -182,6 +197,10 @@ svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
   <div id="p-dr" hidden>
   <section class="box">
     <h2>원장님 <span style="font-weight:400;color:var(--t2);font-size:13px" id="drRange"></span></h2>
+    
+    <h3 class="sh">월별 추이 — 원장님 한 분씩 고르기</h3>
+    <div class="gc" id="drTrend"></div>
+    <h3 class="sh">기간 합계</h3>
     <div class="gc" id="drChart"></div>
     <div class="tw"><table id="drTable"></table></div>
     <ul class="fn" id="drFn"></ul>
@@ -189,6 +208,10 @@ svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
   </section>
   <section class="box">
     <h2>직원 <span style="font-weight:400;color:var(--t2);font-size:13px" id="stRange"></span></h2>
+    
+    <h3 class="sh">월별 추이 — 직원 한 분씩 고르기</h3>
+    <div class="gc" id="stTrend"></div>
+    <h3 class="sh">기간 합계</h3>
     <div class="gc" id="stChart"></div>
     <div class="tw"><table id="stTable"></table></div>
     <ul class="fn" id="stFn"></ul>
@@ -292,6 +315,8 @@ function deltaWon(cur,prev){
 
 /* 상태 */
 var st={i0:0,i1:N-1,metric:"q",tab:"all"};
+var LD0=(function(){for(var i=N-1;i>=0;i--)if(!M[i].partial)return i;return N-1;})();
+st.i1=LD0; // 처음에는 완료된 달까지 (진행 중인 달은 직접 고르면 포함)
 function lastDone(){for(var i=N-1;i>=0;i--)if(!M[i].partial)return i;return 0;}
 function prevRange(){var n=st.i1-st.i0+1,p0=st.i0-n;return p0>=0?{i0:p0,i1:st.i0-1}:null;}
 
@@ -305,10 +330,10 @@ function buildFilters(){
   var ld=lastDone();
   var P=[
     {n:"전체",f:function(){return[0,N-1];}},
-    {n:"최근 6개월",f:function(){return[Math.max(0,N-6),N-1];}},
-    {n:"최근 3개월",f:function(){return[Math.max(0,N-3),N-1];}},
-    {n:"지난달~지금",f:function(){return[Math.max(0,N-2),N-1];}},
-    {n:"완료된 달 전체",f:function(){return[0,ld];}}];
+    {n:"완료된 달 전체",f:function(){return[0,ld];}},
+    {n:"최근 6개월",f:function(){return[Math.max(0,ld-5),ld];}},
+    {n:"최근 3개월",f:function(){return[Math.max(0,ld-2),ld];}},
+    {n:"최근 2개월",f:function(){return[Math.max(0,ld-1),ld];}}];
   var yrs=[];M.forEach(function(m,i){var y=m.ym.slice(0,4);if(!yrs.some(function(a){return a.y===y;}))yrs.push({y:y,i0:i,i1:i});else yrs[yrs.length-1].i1=i;});
   if(yrs.length>1)yrs.forEach(function(a){P.push({n:a.y+"년",f:function(){return[a.i0,a.i1];}});});
   P.forEach(function(p){
@@ -798,6 +823,107 @@ function donut(id,rows){
   rows.forEach(function(r,i){var d=el("div");var sw=el("i");sw.style.background="var(--c"+(i%6+1)+")";d.appendChild(sw);d.appendChild(document.createTextNode(r.n+" "+fmt(r.v)+"건 ("+Math.round(r.v/tot*100)+"%)"));lg.appendChild(d);});
   box.appendChild(lg);
 }
+
+/* ---- 월별 추이: 선택한 기간의 달마다 막대로 (건수/비율 전환, 항목 선택) ---- */
+var TR={}, XMC=[];
+function xm(i){return XMC[i]||(XMC[i]=sumX(i,i));}
+function trNice(x){var p=Math.pow(10,Math.floor(Math.log(x)/Math.LN10)),f=x/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p;}
+function trendBox(id,cfg){
+  var box=$(id);if(!box)return;box.textContent="";
+  var S=TR[id]||(TR[id]={mode:"n",sel:cfg.opts[0].v});
+  if(!cfg.opts.some(function(o){return o.v===S.sel;}))S.sel=cfg.opts[0].v;
+  var bar=el("div","trbar");
+  var sl=el("select");sl.setAttribute("aria-label",cfg.selLabel||"항목 선택");
+  cfg.opts.forEach(function(o){var op=el("option",null,o.label);op.value=o.v;sl.appendChild(op);});
+  sl.value=S.sel;sl.addEventListener("change",function(){S.sel=this.value;render();});bar.appendChild(sl);
+  [["n","건수"],["r","비율"]].forEach(function(x){
+    var b=el("button","pre",x[1]);b.type="button";b.setAttribute("aria-pressed",S.mode===x[0]?"true":"false");
+    b.addEventListener("click",function(){S.mode=x[0];render();});bar.appendChild(b);
+  });
+  box.appendChild(bar);
+  var data=[];for(var i=st.i0;i<=st.i1;i++)data.push({m:M[i],g:cfg.get(i,S.sel)[S.mode]});
+  var ns=data[0].g.length,cap=el("p","cap",cfg.cap(S.mode));box.appendChild(cap);
+  var isP=S.mode==="r",mx=0;
+  data.forEach(function(d){d.g.forEach(function(s){if(s.v!=null&&s.v>mx)mx=s.v;});});
+  if(isP)mx=Math.min(1,Math.max(mx*1.15,0.1));if(mx<=0)mx=1;
+  var W=Math.max(300,box.clientWidth),H=240,L=40,R=6,T=20,Bm=54,iw=W-L-R,ih=H-T-Bm,N2=data.length,slot=iw/N2;
+  var svg=sv("svg",{viewBox:"0 0 "+W+" "+H,width:W,height:H,role:"img","aria-label":cfg.aria||"월별 추이 막대 그래프"});
+  var stepV=isP?(mx>0.5?0.25:0.1):trNice(mx/4),top=Math.ceil(mx/stepV-1e-9)*stepV;
+  for(var g=0;g<=top+1e-9;g+=stepV){
+    var y=T+ih-(g/top)*ih;
+    svg.appendChild(sv("line",{x1:L,x2:W-R,y1:y,y2:y,"class":g===0?"base":"grid"}));
+    var tx=sv("text",{x:L-6,y:y+4,"text-anchor":"end"});tx.textContent=isP?Math.round(g*100)+"%":fmt(g);svg.appendChild(tx);
+  }
+  var gw=Math.min(slot*0.8,ns*34),bw=gw/ns-2,showV=(slot/ns)>=22,anyPart=false,anyNa=false;
+  data.forEach(function(d,k){
+    var cx=L+slot*k+slot/2,m=d.m;if(m.partial)anyPart=true;
+    var lab=sv("text",{x:cx,y:H-32,"text-anchor":"middle"});lab.textContent=(slot<26&&k%2===1)?"":(+m.ym.slice(5))+"월";svg.appendChild(lab);
+    if(m.partial){var pt=sv("text",{x:cx,y:H-20,"text-anchor":"middle","style":"font-size:9.5px"});pt.textContent=slot<40?"진행":"진행 중";svg.appendChild(pt);}
+    d.g.forEach(function(s,j){
+      var x=cx-gw/2+j*(gw/ns)+1,gr=sv("g",{});
+      var tt=sv("title",{});tt.textContent=ymLabel(m)+(m.partial?" (진행 중)":"")+" · "+s.name+" "+(s.v==null?"자료 없음":(isP?Math.round(s.v*100)+"%":fmt(s.v)+"건"));gr.appendChild(tt);
+      if(s.v==null){anyNa=true;gr.appendChild(sv("line",{x1:x,x2:x+Math.max(2,bw),y1:T+ih-2,y2:T+ih-2,stroke:"var(--c"+(j+1)+")","stroke-width":2,"stroke-dasharray":"2 2"}));}
+      else{
+        var h=Math.max(s.v>0?1.5:0,(s.v/top)*ih),yy=T+ih-h;
+        var r=sv("rect",{x:x,y:yy,width:Math.max(2,bw),height:h,rx:2,fill:"var(--c"+(j+1)+")","fill-opacity":m.partial?0.5:1});
+        if(m.partial){r.setAttribute("stroke","var(--c"+(j+1)+")");r.setAttribute("stroke-dasharray","3 2");r.setAttribute("stroke-width","1.5");}
+        gr.appendChild(r);
+        if(showV){var vt=sv("text",{x:x+bw/2,y:yy-4,"text-anchor":"middle","class":"lbl","style":"font-size:10px"});vt.textContent=isP?Math.round(s.v*100)+"%":fmt(s.v);gr.appendChild(vt);}
+      }
+      svg.appendChild(gr);
+    });
+  });
+  var yy2=null,ys=[];data.forEach(function(d,k){var y=d.m.ym.slice(0,4);if(!yy2||yy2.y!==y){yy2={y:y,a:k,b:k};ys.push(yy2);}else yy2.b=k;});
+  ys.forEach(function(g){var t2=sv("text",{x:L+slot*(g.a+g.b+1)/2,y:H-4,"text-anchor":"middle","style":"fill:var(--t1);font-weight:600"});t2.textContent=g.y+"년";svg.appendChild(t2);
+    if(g.a>0)svg.appendChild(sv("line",{x1:L+slot*g.a,x2:L+slot*g.a,y1:T,y2:H-12,"class":"grid"}));});
+  box.appendChild(svg);
+  var lg=el("div","legend");
+  if(ns>1||true){data[0].g.forEach(function(s,j){var a=el("span");var i1=el("i");i1.style.background="var(--c"+(j+1)+")";a.appendChild(i1);a.appendChild(document.createTextNode(s.name));lg.appendChild(a);});}
+  if(anyPart){var c=el("span");var i3=el("i");i3.style.border="1.5px dashed var(--t2)";c.appendChild(i3);c.appendChild(document.createTextNode("점선 = 진행 중인 달 (아직 입력 중이라 낮게 보일 수 있음, 완료된 달과 직접 비교하지 마세요)"));lg.appendChild(c);}
+  if(anyNa)lg.appendChild(el("span",null,"바닥의 짧은 점선 = 자료 없음 (0건 아님)"));
+  box.appendChild(lg);
+}
+function renderTrends(){
+  XMC=[];
+  var chO=[{v:"all",label:"합산 전체"}].concat(CHAN.map(function(c){return {v:c.k,label:c.name};})).concat(SIDE.map(function(c){return {v:c.k,label:c.name+" (참고, 합산 제외)"};}));
+  trendBox("chTrend",{opts:chO,selLabel:"채널 선택",aria:"채널 월별 추이",
+    cap:function(md){return md==="n"?"월별 문의·예약 건수":"월별 예약률 (예약 ÷ 문의)";},
+    get:function(i,s){var m=M[i],q,r;
+      if(s==="all"){var a=sum(i,i);q=a.q;r=a.r;}else if(s==="nv"||s==="bd"){q=m[s][0];r=m[s][2];}else{q=m[s][0];r=m[s][1];}
+      return {n:[{name:"문의",v:q},{name:"예약",v:r}],r:[{name:"예약률",v:pct(r,q)}]};}});
+  var sjO=[{v:"all",label:"합산 전체"}].concat(SJ.map(function(x){return {v:x[0],label:x[1]};})).concat([{v:"res",label:"기타·과목 미확인"}]);
+  trendBox("sjTrend",{opts:sjO,selLabel:"과목 선택",aria:"과목별 월별 추이",
+    cap:function(md){return md==="n"?"월별 문의·예약 건수 (합산 채널)":"월별 예약률 (예약 ÷ 문의)";},
+    get:function(i,s){var q,r;
+      if(s==="all"){var a=sum(i,i);q=a.q;r=a.r;}else if(s==="res"){var b=resSum(xm(i));q=b[0];r=b[1];}else{var c=subjSum(xm(i),s);q=c[0];r=c[1];}
+      return {n:[{name:"문의",v:q},{name:"예약",v:r}],r:[{name:"예약률",v:pct(r,q)}]};}});
+  var osO=[{v:"all",label:"전체 (해외 합계)"}].concat(OSCH.map(function(c){return {v:c.k,label:c.name};}));
+  trendBox("osTrend",{opts:osO,selLabel:"채널 선택",aria:"해외 월별 추이",
+    cap:function(md){return md==="n"?"월별 해외 문의·예약 건수"+(TR.osTrend&&TR.osTrend.sel==="all"?" · 해외 내원 건수":""):"월별 비율"+(TR.osTrend&&TR.osTrend.sel==="all"?" (해외 예약률, 해외 내원 비중 = 해외 내원 ÷ 전체 내원)":" (해외 예약률)");},
+    get:function(i,s){var m=M[i];
+      if(s==="all"){var q=0,r=0;OSCH.forEach(function(c){q+=m.os[c.k][0];r+=m.os[c.k][1];});
+        var ov=m.ovna?null:m.ov[0];
+        return {n:[{name:"해외 문의",v:q},{name:"해외 예약",v:r},{name:"해외 내원",v:ov}],r:[{name:"해외 예약률",v:pct(r,q)},{name:"해외 내원 비중",v:m.ovna?null:pct(m.ov[0],m.vi[0])}]};}
+      return {n:[{name:"해외 문의",v:m.os[s][0]},{name:"해외 예약",v:m.os[s][1]}],r:[{name:"해외 예약률",v:pct(m.os[s][1],m.os[s][0])}]};}});
+  var G=[["all",null,"전체 (체결 대상 6과목)"],["모발이식",["모발이식"],"모발이식"],["헤어라인",["헤어라인"],"헤어라인"],["SMP",["SMP"],"SMP"],["탈모치료",["탈모치료"],"탈모치료"],["기타이식·반영구",["기타이식","반영구"],"기타이식·반영구"]];
+  trendBox("clTrend",{opts:G.map(function(g){return {v:g[0],label:g[2]};}),selLabel:"과목 선택",aria:"체결 월별 추이",
+    cap:function(md){return md==="n"?"월별 상담 내원·체결 건수":"월별 체결률 (체결 ÷ 상담 내원)";},
+    get:function(i,s){var m=M[i],v,c;
+      if(s==="all"){v=m.vi[1];c=m.vi[2];}
+      else{v=0;c=0;G.filter(function(g){return g[0]===s;})[0][1].forEach(function(k){v+=m.cs[k][0];c+=(m.cs[k][1]||0);});}
+      return {n:[{name:"상담 내원",v:v},{name:"체결",v:c}],r:[{name:"체결률",v:pct(c,v)}]};}});
+  function ppl(id,names,gone,key,groups,label){
+    var o=names.filter(function(n){var a=0;M.forEach(function(m){a+=sumGroups(m[key][n],groups)[0];});return a>0;}).map(function(n){return {v:n,label:n+(gone.indexOf(n)>=0?" (퇴사)":"")};});
+    if(!o.length)o=[{v:"-",label:"자료 없음"}];
+    trendBox(id,{opts:o,selLabel:label+" 선택",aria:label+" 월별 추이",
+      cap:function(md){return md==="n"?"월별 상담 내원·체결 건수 (이 "+label+"이 단독 담당한 상담)":"월별 체결률 (체결 ÷ 상담 내원)";},
+      get:function(i,s){var a=(M[i][key][s]?sumGroups(M[i][key][s],groups):[0,0]);
+        return {n:[{name:"상담 내원",v:a[0]},{name:"체결",v:a[1]}],r:[{name:"체결률",v:pct(a[1],a[0])}]};}});
+  }
+  ppl("drTrend",DOCS_ALL,DOCS_GONES,"dr",CL6,"원장님");
+  ppl("stTrend",STAFF_ALL,STAFF_GONES,"st",CL4,"직원");
+}
+
 function qrShort(q,r){return fmt(q)+"/"+fmt(r)+" ("+pctTxt(pct(r,q))+")";}
 function qrText(q,r){return "문의 "+fmt(q)+" · 예약 "+fmt(r)+" ("+pctTxt(pct(r,q))+")";}
 function vcText(v,c){return v>0?pctTxt(c/v)+" ("+c+"/"+v+")":"—";}
@@ -822,7 +948,7 @@ function render(){
   syncMainTabs();
   renderNotice(t);renderCards(t);renderTabs();
   if(st.tab==="all")renderChart();
-  renderChannels(t);renderOverseas(t);renderMonthTable(t);renderSubjects(t,tp,p);renderClosing(t,tp,p);renderPeople(t,tp,p);
+  renderChannels(t);renderOverseas(t);renderMonthTable(t);renderSubjects(t,tp,p);renderClosing(t,tp,p);renderPeople(t,tp,p);renderTrends();
 }
 document.getElementById("back").href=REPORT_URL;
 $("sub").textContent="엑셀 기준 "+DATA.generated+" · "+ymLabel(M[0])+"부터 · 월 단위로 합산";
