@@ -90,6 +90,8 @@ svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
   .card .v{font-size:21px}
   .presets{margin-left:0}
 }
+.rk{font-size:13px;line-height:1.55;margin:3px 0}
+.rkl{margin-top:2px}
 .trscroll{overflow-x:auto;padding-bottom:4px}
 .trbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
 </style>
@@ -115,6 +117,14 @@ svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
 
   <div id="p-all">
   <div class="cards" id="cards"></div>
+
+  <section class="box" id="ipAllBox" hidden>
+    <h2>유입경로 상위 3개 <span style="font-weight:400;color:var(--t2);font-size:13px" id="ipAllRange"></span></h2>
+    <div id="ipAllBody"></div>
+    <div class="gc" id="ipAllChart"></div>
+    <button type="button" class="pre" id="ipAllGo">유입경로 탭에서 자세히 보기 →</button>
+    <ul class="fn" id="ipAllFn"></ul>
+  </section>
 
   <section class="box">
     <h2 id="chtTitle">월별 추이</h2>
@@ -226,11 +236,11 @@ svg text.v2{fill:var(--t1);font-size:11.5px;font-weight:600}
     <h2>유입경로 <span style="font-weight:400;color:var(--t2);font-size:13px" id="ipRange"></span></h2>
     <p class="cap" id="ipNone" hidden>유입경로 엑셀이 없어 이 화면은 비어 있습니다.</p>
     <div id="ipBody">
-    <p class="cap">위쪽에서 고른 기간 기준입니다. 이 탭은 엑셀 자료가 2022년부터 있어, 2025년 이전과도 직전 기간 비교가 됩니다. 한 환자가 경로를 여러 개 고르면 경로마다 센 값(중복 포함)입니다.</p>
+    <p class="cap">위쪽에서 고른 기간 기준입니다. 이 탭은 엑셀 자료가 2022년부터 있어, 2025년 이전과도 직전 기간 비교가 됩니다. 한 환자가 경로를 여러 개 고를 수 있어 건수는 중복 포함이라, 비중(%)을 앞에 두었습니다.</p>
     <div class="cards" id="ipCards"></div>
     <h3 class="sh">월별 추이 — 선택한 기간의 달별 변화</h3>
     <div class="gc" id="ipTrend"></div>
-    <h3 class="sh">경로별 상담 (기간 합계)</h3>
+    <h3 class="sh">경로별 비중 (기간 합계)</h3>
     <div class="gc" id="ipChart"></div>
     <div class="tw"><table id="ipTable"></table></div>
     <ul class="fn" id="ipFn"></ul>
@@ -621,6 +631,42 @@ function ipCard(box,h,v,u,dEl,sub){
 function ipTop(rows){ // 1위(동률이면 모두)
   var t=rows.filter(function(r){return r.rank===1&&r.q>0;});return t;
 }
+
+function ipTop3Rows(R){ // 선택 기간 상위 3위(동률은 모두), 직전 기간 상담 포함
+  var rows=IPT.ip.paths.map(function(p){var a=ipSum(p,R.a0,R.a1),b=R.prev?ipSum(p,R.prev.a0,R.prev.a1):null;return {p:p,q:a[0],pq:b?b[0]:null};}).filter(function(r){return r.q>0;});
+  ipRank(rows,"q");
+  var top=rows.filter(function(r){return r.rank<=3;});
+  top.forEach(function(r){r.tie=rows.filter(function(x){return x.rank===r.rank;}).length>1;});
+  return top;
+}
+function ipTop3Fill(box,R,tot,totP){ // box 안에 1~3위 줄 (비중 %, 직전 기간 비중과 비교)
+  var top=ipTop3Rows(R);
+  top.forEach(function(r){
+    var ln=el("div","rk");
+    ln.appendChild(el("b",null,(r.tie?"공동 ":"")+r.rank+"위 "));
+    ln.appendChild(document.createTextNode(r.p+" "+pctTxt(pct(r.q,tot[0]))));
+    if(r.pq!=null&&totP&&totP[0]>0){ln.appendChild(document.createTextNode(" · 직전 "+pctTxt(pct(r.pq,totP[0]))+" "));ln.appendChild(deltaRate(pct(r.q,tot[0]),pct(r.pq,totP[0])));}
+    box.appendChild(ln);
+  });
+}
+function renderIPAll(){
+  var box=$("ipAllBox");if(!box)return;
+  if(!DATA.ip){box.hidden=true;return;}
+  ipInit();var R=ipRange();if(!R){box.hidden=true;return;}
+  box.hidden=false;
+  var tot=ipSum(null,R.a0,R.a1),totP=R.prev?ipSum(null,R.prev.a0,R.prev.a1):null;
+  $("ipAllRange").textContent="· "+ipRYm(R.a0,R.a1);
+  var body=$("ipAllBody");body.textContent="";
+  var tl=el("div","rkl");ipTop3Fill(tl,R,tot,totP);body.appendChild(tl);
+  var rows=ipTop3All(R,tot);
+  hbar("ipAllChart",rows.slice(0,6).map(function(r){return {n:r.p,v:r.q,t:pctTxt(pct(r.q,tot[0])),s:pctTxt(pct(r.q,tot[0]))};}),{lw:true,aria:"유입경로 비중 상위 6개",cap:"유입경로 비중 상위 6개 (경로별 선택 수 합계 중 비율)"});
+  var go=$("ipAllGo");if(!go.onclick)go.onclick=function(){st.tab="ip";try{history.replaceState(null,"","#ip");}catch(e){}render();window.scrollTo(0,0);};
+  fnInto("ipAllFn",["한 환자가 경로를 여러 개 고를 수 있어 경로별 선택 수를 모두 더하면 실제 상담 인원보다 큽니다. 그래서 건수 대신 비중(%)으로 보여 줍니다. 경로별 선택 수·성사·월별 변화는 '유입경로' 탭에서 볼 수 있습니다."+(R.cut?" 유입경로 자료는 "+ymLabel(IPT.items[IPT.items.length-1].m)+"까지라 그 이후 달은 뺐습니다.":"")]);
+}
+function ipTop3All(R){
+  var rows=IPT.ip.paths.map(function(p){return {p:p,q:ipSum(p,R.a0,R.a1)[0]};}).filter(function(r){return r.q>0;});
+  rows.sort(function(x,y){return y.q-x.q;});return rows;
+}
 function renderIP(){
   var wrap=$("ipBody"),none=$("ipNone");
   if(!DATA.ip){wrap.hidden=true;none.hidden=false;return;}
@@ -641,50 +687,49 @@ function renderIP(){
   var topP=null,top3P=null;
   if(rowsP){ipRank(rowsP,"q");topP=rowsP.filter(function(r){return r.rank===1&&r.q>0;});top3P=0;rowsP.slice(0,3).forEach(function(r){top3P+=r.q;});}
   var box=$("ipCards");box.textContent="";
-  ipCard(box,"유입경로 상담 (중복 포함)",fmt(tot[0]),"건",totP?deltaCount(tot[0],totP[0]):null);
-  var tn=top.map(function(r){return r.p;}).join("·")||"—";
-  ipCard(box,"가장 많은 경로"+(top.length>1?" (공동 1위)":""),tn,top.length?"· "+fmt(top[0].q)+"건 ("+pctTxt(pct(top[0].q,tot[0]))+")":"",null,topP&&topP.length?"직전 기간 "+topP.map(function(r){return r.p;}).join("·")+" "+fmt(topP[0].q)+"건 ("+pctTxt(pct(topP[0].q,totP[0]))+")":"직전 기간 자료 없음");
-  ipCard(box,"상위 3개 경로의 비중",pctTxt(pct(top3,tot[0])),"",totP?deltaRate(pct(top3,tot[0]),pct(top3P,totP[0])):null,totP?"직전 "+pctTxt(pct(top3P,totP[0])):null);
+  var c3=el("div","card");c3.style.gridColumn="span 2";c3.appendChild(el("h3",null,"상위 3개 경로 (비중, 경로별 선택 수 합계 중)"));var c3b=el("div","rkl");ipTop3Fill(c3b,R,tot,totP);c3.appendChild(c3b);box.appendChild(c3);
   ipCard(box,"성사 전환율 (경로 합산)",pctTxt(pct(tot[2],tot[1])),"· 확정 "+fmt(tot[2])+" / 상담 "+fmt(tot[1]),totP?deltaRate(pct(tot[2],tot[1]),pct(totP[2],totP[1])):null,totP?"직전 "+pctTxt(pct(totP[2],totP[1])):null);
   // 선택 기간 월별 추이
   var items=IPT.items.slice(R.a0,R.a1+1);
   var opts=[{v:"all",label:"경로 합산 (중복 포함)"}].concat(IPT.order.map(function(p){return {v:p,label:p};}));
   var cfg={opts:opts,selLabel:"경로 선택",aria:"유입경로 월별 추이",items:items,
-    cap:function(md){return md==="n"?"월별 상담 건수와 성사(확정) 건수":"월별 비중(전체 경로 상담 중 이 경로)과 성사 전환율";},
+    cap:function(md){return md==="n"?"월별 선택 수(중복 포함)와 확정 수":"월별 비중(전체 경로 선택 수 중 이 경로)과 성사 전환율";},
     get:function(k,s){
       var a=ipSum(s==="all"?null:s,k,k),t=ipTot(k);
-      var n=[{name:"상담",v:a[0]},{name:"성사(확정)",v:a[2]}];
+      var n=[{name:"선택 수",v:a[0]},{name:"확정",v:a[2]}];
       var r=s==="all"?[{name:"성사 전환율",v:pct(a[2],a[1])}]:[{name:"비중",v:pct(a[0],t)},{name:"성사 전환율",v:pct(a[2],a[1])}];
       return {n:n,r:r};}};
+  if(!TR.ipTrend)TR.ipTrend={mode:"r",sel:IPT.order[0]};
   trendBox("ipTrend",cfg);
   // 경로별 상위 막대
   if(st.tab==="ip"){
-    var hb=rows.filter(function(r){return r.q>0;}).slice(0,10).map(function(r){return {n:r.p,v:r.q,t:fmt(r.q)+"건 ("+pctTxt(pct(r.q,tot[0]))+")",s:fmt(r.q)+" ("+pctTxt(pct(r.q,tot[0]))+")"};});
-    hbar("ipChart",hb,{lw:true,aria:"경로별 상담 건수 상위 10개",cap:"상담 건수 상위 10개 경로 (중복 선택 포함)"});
+    var hb=rows.filter(function(r){return r.q>0;}).slice(0,10).map(function(r){return {n:r.p,v:r.q,t:pctTxt(pct(r.q,tot[0]))+" (선택 "+fmt(r.q)+")",s:pctTxt(pct(r.q,tot[0]))};});
+    hbar("ipChart",hb,{lw:true,aria:"경로별 비중 상위 10개",cap:"비중 상위 10개 경로 (경로별 선택 수 합계 중 비율, 선택 수는 중복 포함)"});
   }
   // 표
   var tb=$("ipTable");tb.textContent="";
-  headRow(tb,["순위","경로","상담","비중","직전 대비 상담","성사 상담수","확정","성사 전환율","전환율 직전 대비"]);
+  headRow(tb,["순위","경로","비중","직전 비중","비중 증감","선택 수(중복)","성사 대상","확정","성사 전환율","전환율 증감"]);
   tb.firstChild.children[1].style.textAlign="left";
   rows.forEach(function(r){
     var tr=el("tr");
     tr.appendChild(el("td",null,r.q>0?String(r.rank):"—"));var pc=el("td",null,r.p);pc.style.textAlign="left";tr.appendChild(pc);
-    tr.appendChild(el("td",null,fmt(r.q)));tr.appendChild(el("td",null,pctTxt(pct(r.q,tot[0]))));
-    var d1=el("td");if(R.prev)d1.appendChild(deltaCount(r.q,r.pq));else d1.textContent="—";tr.appendChild(d1);
+    tr.appendChild(el("td",null,pctTxt(pct(r.q,tot[0]))));
+    tr.appendChild(el("td",null,R.prev?pctTxt(pct(r.pq,totP[0])):"—"));
+    var d1=el("td");if(R.prev)d1.appendChild(deltaRate(pct(r.q,tot[0]),pct(r.pq,totP[0])));else d1.textContent="—";tr.appendChild(d1);
+    tr.appendChild(el("td",null,fmt(r.q)));
     tr.appendChild(el("td",null,fmt(r.n)));tr.appendChild(el("td",null,fmt(r.cf)));tr.appendChild(el("td",null,pctTxt(pct(r.cf,r.n))));
     var d2=el("td");if(R.prev)d2.appendChild(deltaRate(pct(r.cf,r.n),pct(r.pcf,r.pn)));else d2.textContent="—";tr.appendChild(d2);
     tb.appendChild(tr);
   });
   var sr=el("tr","sum");sr.appendChild(el("td",null,""));var sc2=el("td",null,"합계 (중복 포함)");sc2.style.textAlign="left";sr.appendChild(sc2);
-  sr.appendChild(el("td",null,fmt(tot[0])));sr.appendChild(el("td",null,"100%"));
-  var sd=el("td");if(totP)sd.appendChild(deltaCount(tot[0],totP[0]));else sd.textContent="—";sr.appendChild(sd);
+  sr.appendChild(el("td",null,"100%"));sr.appendChild(el("td",null,totP?"100%":"—"));sr.appendChild(el("td",null,"—"));sr.appendChild(el("td",null,fmt(tot[0])));
   sr.appendChild(el("td",null,fmt(tot[1])));sr.appendChild(el("td",null,fmt(tot[2])));sr.appendChild(el("td",null,pctTxt(pct(tot[2],tot[1]))));
   var sd2=el("td");if(totP)sd2.appendChild(deltaRate(pct(tot[2],tot[1]),pct(totP[2],totP[1])));else sd2.textContent="—";sr.appendChild(sd2);
   tb.appendChild(sr);
   // 연도별 흐름 (2022년~)
   renderIPLong();
   var ip=IPT.ip,lastY=ymLabel(IPT.items[IPT.items.length-1].m);
-  var f=["한 환자가 유입경로를 여러 개 고르면 경로마다 한 건씩 세므로, 경로별 상담을 모두 더한 값(합계)은 실제 상담 인원보다 많습니다. 비중도 이 합계 기준입니다.",
+  var f=["한 환자가 유입경로를 여러 개 고르면 경로마다 한 번씩 세므로, 경로별 선택 수를 모두 더한 값(합계)은 실제 상담 인원보다 많습니다. 그래서 건수 대신 비중(%)을 앞에 두었고, 비중은 이 합계 중 비율입니다. 선택 수·성사 대상·확정은 같은 중복 방식의 숫자입니다.",
     "상담 건수는 엑셀 '유입경로별상담현황'과 같은 기준(모발이식·헤어라인·SMP·탈모치료·검사·처방 6개 과목, 취소 건 포함)이고, 성사 상담수·확정·전환율은 '유입경로별 성사 현황'과 같은 기준(취소 제외, 수술확정+치료확정)입니다. 그래서 같은 경로라도 상담 건수와 성사 상담수가 다릅니다.",
     "경로 이름은 엑셀 선택 항목 그대로입니다. 'AI'·'해외'·'네이버지도'·'기타(타채널/타SNS)' 등은 늦게 생긴 항목이라 이전 기간 숫자가 없거나 적은 것은 실제 감소·증가가 아니라 항목이 없었던 영향일 수 있습니다(확인 필요).",
     "유입경로 엑셀 자료는 "+ymLabel(IPT.items[0].m)+"부터 "+lastY+"까지입니다"+(R.cut?" (선택한 기간 중 그 이후 달은 자료가 없어 뺐습니다)":"")+".",
@@ -694,11 +739,12 @@ function renderIP(){
 function renderIPLong(){
   var ip=IPT.ip,items=IPT.items;
   var opts=[{v:"all",label:"경로 합산 (중복 포함)"}].concat(IPT.order.map(function(p){return {v:p,label:p};}));
+  if(!TR.ipTrendAll)TR.ipTrendAll={mode:"r",sel:IPT.order[0]};
   trendBox("ipTrendAll",{opts:opts,selLabel:"경로 선택",aria:"유입경로 전체 기간 월별 추이",items:items,minSlot:46,
-    cap:function(md){return md==="n"?"월별 상담 건수와 성사(확정) 건수 — "+ymLabel(items[0].m)+"부터 (오른쪽으로 끌면 이전 달)":"월별 비중과 성사 전환율 — "+ymLabel(items[0].m)+"부터";},
+    cap:function(md){return md==="n"?"월별 선택 수(중복 포함)와 확정 수 — "+ymLabel(items[0].m)+"부터 (오른쪽으로 끌면 이전 달)":"월별 비중과 성사 전환율 — "+ymLabel(items[0].m)+"부터";},
     get:function(k,s){
       var a=ipSum(s==="all"?null:s,k,k),t=ipTot(k);
-      return {n:[{name:"상담",v:a[0]},{name:"성사(확정)",v:a[2]}],
+      return {n:[{name:"선택 수",v:a[0]},{name:"확정",v:a[2]}],
         r:s==="all"?[{name:"성사 전환율",v:pct(a[2],a[1])}]:[{name:"비중",v:pct(a[0],t)},{name:"성사 전환율",v:pct(a[2],a[1])}]};}});
   // 연도별 표: 경로 × 연도
   var ys=[];items.forEach(function(it){var y=it.m.ym.slice(0,4),g=ys.filter(function(a){return a.y===y;})[0];if(!g)ys.push({y:y,a:it.k,b:it.k});else g.b=it.k;});
@@ -709,15 +755,15 @@ function renderIPLong(){
   ys.forEach(function(g){var n=g.b-g.a+1;hr.appendChild(el("th",null,g.y+"년"+(n<12?" ("+n+"개월)":"")));});tb.appendChild(hr);
   paths.forEach(function(p){
     var tr=el("tr");tr.appendChild(el("td",null,p));
-    ys.forEach(function(g,i){var q=ipSum(p,g.a,g.b)[0];tr.appendChild(el("td",null,q>0?fmt(q)+"건 ("+pctTxt(pct(q,yt[i]))+")":"—"));});
+    ys.forEach(function(g,i){var q=ipSum(p,g.a,g.b)[0];tr.appendChild(el("td",null,q>0?pctTxt(pct(q,yt[i]))+" ("+fmt(q)+")":"—"));});
     tb.appendChild(tr);
   });
   var rest=el("tr");rest.appendChild(el("td",null,"그 밖의 경로"));
-  ys.forEach(function(g,i){var s=0;paths.forEach(function(p){s+=ipSum(p,g.a,g.b)[0];});var q=yt[i]-s;rest.appendChild(el("td",null,q>0?fmt(q)+"건 ("+pctTxt(pct(q,yt[i]))+")":"—"));});tb.appendChild(rest);
-  var sm=el("tr","sum");sm.appendChild(el("td",null,"합계 (중복 포함)"));
-  ys.forEach(function(g,i){sm.appendChild(el("td",null,fmt(yt[i])+"건"));});tb.appendChild(sm);
+  ys.forEach(function(g,i){var s=0;paths.forEach(function(p){s+=ipSum(p,g.a,g.b)[0];});var q=yt[i]-s;rest.appendChild(el("td",null,q>0?pctTxt(pct(q,yt[i]))+" ("+fmt(q)+")":"—"));});tb.appendChild(rest);
+  var sm=el("tr","sum");sm.appendChild(el("td",null,"선택 수 합계 (중복 포함)"));
+  ys.forEach(function(g,i){sm.appendChild(el("td",null,"100% ("+fmt(yt[i])+")"));});tb.appendChild(sm);
   var pr=ys.filter(function(g){return g.b-g.a+1<12;});
-  fnInto("ipYearFn",["표시한 경로는 2022년부터 지금까지 상담이 많았던 12개 경로이고, 나머지는 '그 밖의 경로'로 묶었습니다. 괄호 안은 그 해 합계(중복 포함) 중 비중입니다."+(pr.length?" "+pr.map(function(g){return g.y+"년은 "+(g.b-g.a+1)+"개월치라 건수를 다른 해와 바로 견주지 말고 비중으로 보세요.";}).join(" "):"")]);
+  fnInto("ipYearFn",["표시한 경로는 2022년부터 지금까지 상담이 많았던 12개 경로이고, 나머지는 '그 밖의 경로'로 묶었습니다. 앞의 %는 그 해 경로별 선택 수 합계(중복 포함) 중 비중, 괄호 안은 선택 수입니다."+(pr.length?" "+pr.map(function(g){return g.y+"년은 "+(g.b-g.a+1)+"개월치라 선택 수를 다른 해와 바로 견주지 말고 비중으로 보세요.";}).join(" "):"")]);
 }
 
 /* ---- 과목별 · 체결 · 원장님/직원 ---- */
@@ -1123,6 +1169,7 @@ function render(){
   renderNotice(t);renderCards(t);renderTabs();
   if(st.tab==="all")renderChart();
   renderChannels(t);renderOverseas(t);renderMonthTable(t);renderSubjects(t,tp,p);renderClosing(t,tp,p);renderPeople(t,tp,p);renderTrends();
+  renderIPAll();
   if(st.tab==="ip")renderIP();
 }
 document.getElementById("back").href=REPORT_URL;
